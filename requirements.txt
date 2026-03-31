@@ -1,0 +1,9 @@
+google-genai
+customtkinter
+speechrecognition
+pygame
+scipy
+pydub
+pyautogui
+pocket-tts
+python-dotenv
