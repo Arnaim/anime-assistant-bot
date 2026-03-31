@@ -10,7 +10,7 @@ class Assistant:
         self.voice_engine = VoiceEngine()
         self.name = ASSISTANT_NAME 
         self.client = Groq(api_key=GROQ_API_KEY)
-        self.model_id = "llama-3.3-70b-versatile" 
+        self.model_id = "llama-3.8b-8192" 
         
         # Memory setup
         self.memory_file = "chat_history.json"
@@ -206,5 +206,7 @@ class Assistant:
             return final_text
 
         except Exception as e:
+            if "rate_limit_exceeded" in str(e).lower():
+                return "Arnab, even my genius has limits when the hardware can't keep up. Give me a minute to reset my calculations."
             print(f"Tool Error: {e}")
-            return f"Error: {str(e)}"
+            return str(e)
