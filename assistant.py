@@ -10,7 +10,7 @@ class Assistant:
         self.voice_engine = VoiceEngine()
         self.name = ASSISTANT_NAME 
         self.client = Groq(api_key=GROQ_API_KEY)
-        self.model_id = "llama3-8b-8192" 
+        self.model_id = "llama-3.1-8b-instant" 
         
         # Memory setup
         self.memory_file = "chat_history.json"
@@ -57,6 +57,20 @@ class Assistant:
                             "app_name": {"type": "string", "description": "The name of the app (e.g., 'chrome', 'notepad')"}
                         },
                         "required": ["app_name"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "facebook_search",
+                    "description": "Searches Facebook for a specific person, group, or topic",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {"type": "string", "description": "The search term for Facebook"}
+                        },
+                        "required": ["query"]
                     }
                 }
             },
@@ -179,6 +193,8 @@ class Assistant:
                         result = tools.open_website(arguments.get("url"))
                     elif function_name == "google_search":
                         result = tools.google_search(arguments.get("query"))
+                    elif function_name == "facebook_search":
+                        result = tools.facebook_search(arguments.get("query"))
                     else:
                         result = "Unknown tool"
 

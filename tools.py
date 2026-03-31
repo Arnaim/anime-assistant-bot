@@ -20,6 +20,16 @@ def google_search(query: str):
     webbrowser.open(url)
     return f"Here are the search results for '{query}'. I hope it's what you were looking for."
 
+def facebook_search(query: str):
+    """Searches Facebook for the given query."""
+    try:
+        # Create a direct Facebook search URL
+        url = f"https://www.facebook.com/search/top/?q={query.replace(' ', '%20')}"
+        webbrowser.open(url)
+        return f"I've searched Facebook for '{query}'. Take a look at the results, Arnab."
+    except Exception as e:
+        return f"Logic error while searching Facebook: {e}"
+    
 def type_in_notepad(text: str):
     """Opens Notepad and types the provided text into it."""
     try:
