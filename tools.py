@@ -5,6 +5,7 @@ import webbrowser
 import time
 import webbrowser
 import pyautogui
+from datetime import datetime
 
 def open_website(url: str):
     """Opens any specific URL in the default browser."""
@@ -55,15 +56,23 @@ def open_app(app_name: str):
         return f"I couldn't open it because: {str(e)}"
 
 def take_screenshot():
-    """Takes a screenshot and saves it to the Windows Screenshots folder."""
+    """Takes a screenshot with a unique timestamp and saves it to the Screenshots folder."""
     try:
-        save_path = r"C:\Users\naimu\Pictures\Screenshots\herta_snap.png"
+        # Define the directory
+        folder_path = r"C:\Users\naimu\Pictures\Screenshots"
         
-        # Ensure the directory exists (just in case)
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        # Ensure the directory exists
+        os.makedirs(folder_path, exist_ok=True)
         
+        # Create a unique filename using the current date and time
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"herta_snap_{timestamp}.png"
+        save_path = os.path.join(folder_path, filename)
+        
+        # Take and save the screenshot
         pyautogui.screenshot(save_path)
-        return f"Snapshot captured, Arnab. I've archived it in your Pictures folder where it belongs."
+        
+        return f"Snapshot captured as {filename}, Arnab. I've archived it in your Pictures folder."
     except Exception as e:
         return f"Logic error while capturing screen: {e}"
 
