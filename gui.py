@@ -7,6 +7,7 @@ from assistant import Assistant
 from avatar import load_avatar, EXPRESSIONS
 from tray import TrayManager
 
+# --- COLORS (Fixed: Removed 8-digit transparency hex codes) ---
 BG          = "#2a2542"
 BG2         = "#221e38"
 ACCENT      = "#7a56ae"
@@ -19,8 +20,10 @@ BUBBLE_USER = "#7a56ae"
 class ChatWindow(ctk.CTk):
     def __init__(self):
         super().__init__()
+        # Initializing Assistant first so its name is available
         self.assistant = Assistant()
-        self.title("Herta — Space Assistant")
+        
+        self.title(f"{self.assistant.name} — Genius Assistant")
         self.geometry("480x660")
         self.resizable(False, False)
         self.configure(fg_color=BG)
@@ -40,180 +43,131 @@ class ChatWindow(ctk.CTk):
         )
         self.tray.start()
 
-        keyboard.add_hotkey("ctrl+shift+h", self._toggle_window)
-
-        self._add_message("Herta",
-            "There you are, Arnab. I was just finishing some calculations, "
-            "but I suppose they can wait. What's on the agenda today?")
-
-    # ── Avatar ─────────────────────────────────────────────────────────────
+        # Global Hotkey (Ctrl+Shift+H)
+        keyboard.add_hotkey('ctrl+shift+h', self._toggle_window)
 
     def _preload_avatars(self):
+        """Pre-loads avatars using CTkImage for high-DPI scaling support."""
         for expr in EXPRESSIONS:
             pil_img = load_avatar(expr)
-            self._avatar_images[expr] = ImageTk.PhotoImage(pil_img)
-
-    def _set_expression(self, expr: str):
-        if expr not in self._avatar_images:
-            expr = "idle"
-        self.after(0, lambda: [
-            self.avatar_label.configure(image=self._avatar_images[expr]),
-            self.expr_badge.configure(text=EXPRESSIONS[expr]["label"])
-        ])
-
-    # ── UI build ───────────────────────────────────────────────────────────
+            # Wrapping PIL image in CTkImage fixes the scaling UserWarning
+            self._avatar_images[expr] = ctk.CTkImage(
+                light_image=pil_img,
+                dark_image=pil_img,
+                size=(110, 110)
+            )
 
     def _build_ui(self):
-        # Title bar
-        titlebar = ctk.CTkFrame(self, fg_color=BG2, height=44, corner_radius=0)
-        titlebar.pack(fill="x")
-        titlebar.pack_propagate(False)
+        # ── Custom Titlebar ──────────────────────────────────────────────────
+        self.title_bar = ctk.CTkFrame(self, fg_color=BG2, height=40, corner_radius=0)
+        self.title_bar.pack(fill="x", side="top")
+        
+        title_lbl = ctk.CTkLabel(self.title_bar, text=f"✨ {self.assistant.name.upper()} TERMINAL", 
+                                 font=ctk.CTkFont(size=12, weight="bold"), text_color=ACCENT2)
+        title_lbl.pack(side="left", padx=15)
 
-        ctk.CTkLabel(titlebar, text="✦  Herta",
-                     font=ctk.CTkFont(size=15, weight="bold"),
-                     text_color=ACCENT2).pack(side="left", padx=16)
+        # ── Avatar Display ────────────────────────────────────────────────────
+        self.avatar_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.avatar_frame.pack(pady=20)
 
-        self.status_dot = ctk.CTkLabel(titlebar, text="●",
-                                        font=ctk.CTkFont(size=10),
-                                        text_color=ACCENT)
-        self.status_dot.pack(side="right", padx=16)
-
-        ctk.CTkLabel(titlebar, text="Space Assistant",
-                     font=ctk.CTkFont(size=12),
-                     text_color=MUTED).pack(side="right")
-
-        # Chat area
-        self.chat_frame = ctk.CTkScrollableFrame(
-            self, fg_color=BG, corner_radius=0)
-        self.chat_frame.pack(fill="both", expand=True)
-
-        # Avatar (bottom-right corner)
-        self.avatar_outer = ctk.CTkFrame(
-            self, fg_color=BG, width=130, height=145)
-        self.avatar_outer.place(relx=1.0, rely=1.0, anchor="se", x=-8, y=-62)
-
-        self.avatar_label = ctk.CTkLabel(
-            self.avatar_outer, text="",
-            image=self._avatar_images["idle"],
-            fg_color=BG)
+        self.avatar_label = ctk.CTkLabel(self.avatar_frame, text="", image=self._avatar_images["idle"])
         self.avatar_label.pack()
 
-        self.expr_badge = ctk.CTkLabel(
-            self.avatar_outer,
-            text=EXPRESSIONS["idle"]["label"],
-            font=ctk.CTkFont(size=10),
-            text_color=ACCENT2,
-            fg_color=BUBBLE_BB,
-            corner_radius=10,
-            padx=8, pady=2)
-        self.expr_badge.pack(pady=(2, 0))
+        # ── Chat Area ────────────────────────────────────────────────────────
+        self.chat_frame = ctk.CTkScrollableFrame(
+            self, fg_color=BG2, corner_radius=15, 
+            scrollbar_button_color=ACCENT,
+            scrollbar_button_hover_color=ACCENT2
+        )
+        self.chat_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
 
-        # Input bar
-        input_bar = ctk.CTkFrame(self, fg_color=BG2, height=62, corner_radius=0)
-        input_bar.pack(fill="x", side="bottom")
-        input_bar.pack_propagate(False)
+        # ── Input Bar ────────────────────────────────────────────────────────
+        input_bar = ctk.CTkFrame(self, fg_color="transparent")
+        input_bar.pack(fill="x", side="bottom", padx=20, pady=(0, 10))
 
         self.input_field = ctk.CTkEntry(
             input_bar,
             placeholder_text="Say something to Herta...",
-            fg_color=BG, border_color=ACCENT + "44",
-            text_color=TEXT, placeholder_text_color=MUTED,
+            fg_color=BG, border_color=ACCENT, text_color=TEXT,
+            placeholder_text_color=MUTED,
             font=ctk.CTkFont(size=13),
-            height=38, corner_radius=20)
-        self.input_field.pack(side="left", fill="x",
-                               expand=True, padx=(12, 6), pady=12)
-        self.input_field.bind("<Return>", lambda e: self._on_send())
+            height=38, corner_radius=20
+        )
+        self.input_field.pack(side="left", fill="x", expand=True, padx=(0, 10))
+        self.input_field.bind("<Return>", lambda e: self._on_send_click())
 
-        # Mic button
         self.mic_btn = ctk.CTkButton(
             input_bar, text="🎤", width=38, height=38,
-            fg_color=BG, border_width=1,
-            border_color=ACCENT + "66",
-            hover_color=BUBBLE_BB,
-            text_color=TEXT,
-            font=ctk.CTkFont(size=16),
-            corner_radius=20,
-            command=self._on_mic_click)
-        self.mic_btn.pack(side="left", padx=(0, 6), pady=12)
+            fg_color=BG, border_width=1, border_color=ACCENT,
+            hover_color=BUBBLE_BB, text_color=TEXT,
+            font=ctk.CTkFont(size=16), corner_radius=20,
+            command=self._on_mic_click
+        )
+        self.mic_btn.pack(side="right", padx=2)
 
-        # Send button
         self.send_btn = ctk.CTkButton(
-            input_bar, text="→", width=38, height=38,
-            fg_color=ACCENT, hover_color=ACCENT2,
-            text_color=TEXT, font=ctk.CTkFont(size=16),
-            corner_radius=20, command=self._on_send)
-        self.send_btn.pack(side="left", padx=(0, 12), pady=12)
+            input_bar, text="➤", width=38, height=38,
+            fg_color=ACCENT, hover_color=ACCENT2, text_color=BG,
+            font=ctk.CTkFont(size=16), corner_radius=20,
+            command=self._on_send_click
+        )
+        self.send_btn.pack(side="right")
 
-        # Hotkey hint
-        ctk.CTkLabel(self,
-                     text="Ctrl+Shift+H to hide  ·  lives in system tray",
-                     font=ctk.CTkFont(size=10),
-                     text_color=MUTED + "88",
-                     fg_color=BG2).pack(fill="x")
+        # Bottom Hint (Fixed: Removed the '88' transparency suffix)
+        ctk.CTkLabel(self, text="Ctrl+Shift+H to hide  ·  lives in system tray",
+                     font=ctk.CTkFont(size=10), text_color=MUTED, fg_color=BG).pack(fill="x", pady=2)
 
-    # ── Messaging ──────────────────────────────────────────────────────────
-
-    def _add_message(self, sender: str, text: str):
-        is_user = sender == "You"
-        anchor  = "e" if is_user else "w"
-        bg      = BUBBLE_USER if is_user else BUBBLE_BB
-        padx    = (60, 10) if is_user else (10, 60)
-
-        bubble = ctk.CTkLabel(
-            self.chat_frame,
-            text=text,
-            wraplength=300,
-            justify="left",
-            fg_color=bg,
-            text_color=TEXT,
-            corner_radius=12,
-            font=ctk.CTkFont(size=13),
-            padx=12, pady=8)
-        bubble.pack(anchor=anchor, pady=(4, 0), padx=padx)
-
-        name_label = ctk.CTkLabel(
-            self.chat_frame,
-            text=sender,
-            font=ctk.CTkFont(size=10),
-            text_color=MUTED,
-            fg_color=BG)
-        name_label.pack(
-            anchor=anchor,
-            padx=(14 if not is_user else 0, 0 if not is_user else 14))
-
+    def _add_message(self, sender, text):
+        is_user = sender.lower() == "you"
+        color = BUBBLE_USER if is_user else BUBBLE_BB
+        anchor = "e" if is_user else "w"
+        
+        msg_box = ctk.CTkFrame(self.chat_frame, fg_color=color, corner_radius=12)
+        msg_box.pack(anchor=anchor, padx=10, pady=5)
+        
+        lbl = ctk.CTkLabel(msg_box, text=text, text_color=TEXT, 
+                           font=ctk.CTkFont(size=12), wraplength=300, justify="left")
+        lbl.pack(padx=12, pady=8)
+        
+        # Auto-scroll to bottom
         self.chat_frame._parent_canvas.yview_moveto(1.0)
 
-    def _on_send(self):
+    def _set_expression(self, expr):
+        if expr in self._avatar_images:
+            self.avatar_label.configure(image=self._avatar_images[expr])
+
+    def _on_send_click(self):
         text = self.input_field.get().strip()
-        if not text:
-            return
-        self.input_field.delete(0, "end")
+        if not text: return
+        
+        self.input_field.delete(0, 'end')
         self._add_message("You", text)
-        self.send_btn.configure(state="disabled")
+        
+        # Start reply thread
+        threading.Thread(target=self._get_reply, args=(text,), daemon=True).start()
+
+    def _get_reply(self, text):
         self._set_expression("thinking")
-        threading.Thread(target=self._get_reply,
-                         args=(text,), daemon=True).start()
-
-    def _get_reply(self, text: str):
+        self.send_btn.configure(state="disabled")
+        
         reply = self.assistant.send_message(text)
-        self._set_expression("talking")
-        self.after(0, self._add_message, "Herta", reply)
+        
+        self.after(0, self._set_expression, "talking")
+        self.after(0, self._add_message, self.assistant.name, reply)
         self.after(0, self.send_btn.configure, {"state": "normal"})
-        self.after(2500, lambda: self._set_expression("idle"))
-
-    # ── Voice input ────────────────────────────────────────────────────────
+        
+        # Go back to idle after speaking (approximate timing)
+        self.after(4000, self._set_expression, "idle")
 
     def _on_mic_click(self):
         self.mic_btn.configure(state="disabled", text="⌛")
-        self._set_expression("thinking")
-        threading.Thread(target=self._listen_to_voice, daemon=True).start()
+        threading.Thread(target=self._listen_voice, daemon=True).start()
 
-    def _listen_to_voice(self):
+    def _listen_voice(self):
         try:
             with self.mic as source:
                 self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
-                audio = self.recognizer.listen(
-                    source, timeout=5, phrase_time_limit=10)
+                audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=10)
             user_text = self.recognizer.recognize_google(audio)
             self.after(0, self._process_voice_input, user_text)
         except Exception as e:
@@ -227,12 +181,9 @@ class ChatWindow(ctk.CTk):
     def _process_voice_input(self, text: str):
         self.mic_btn.configure(state="normal", text="🎤")
         self._add_message("You", text)
-        self.send_btn.configure(state="disabled")
-        threading.Thread(target=self._get_reply,
-                         args=(text,), daemon=True).start()
+        threading.Thread(target=self._get_reply, args=(text,), daemon=True).start()
 
-    # ── Window / tray ──────────────────────────────────────────────────────
-
+    # ── Window / tray logic ────────────────────────────────────────────────
     def _hide_to_tray(self):
         self.withdraw()
 
@@ -242,12 +193,12 @@ class ChatWindow(ctk.CTk):
 
     def _toggle_window(self):
         if self.winfo_viewable():
-            self._hide_to_tray()
+            self.withdraw()
         else:
             self._show_window()
 
     def _quit_app(self):
-        print("Saving Herta's memory...")
-        self.assistant.save_memory()
         self.tray.stop()
-        self.after(0, self.destroy)
+        self.destroy()
+        import os
+        os._exit(0)
