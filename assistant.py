@@ -123,15 +123,29 @@ class Assistant:
 
     def save_memory(self):
         try:
+            serializable_memory = []
+            for msg in self.memory:
+                # If it's a Groq message object, convert to dict
+                if hasattr(msg, "to_dict"):
+                    serializable_memory.append(msg.to_dict())
+                # If it's already a dict (like tool results), keep as is
+                elif isinstance(msg, dict):
+                    serializable_memory.append(msg)
+                else:
+                    # Fallback for any other objects
+                    serializable_memory.append(str(msg))
+
             with open(self.memory_file, "w") as f:
-                json.dump(self.memory, f, indent=4)
+                json.dump(serializable_memory, f, indent=4)
         except Exception as e:
             print(f"Failed to save history: {e}")
 
     def send_message(self, user_input):
+        # 1. Add user input to memory
         self.memory.append({"role": "user", "content": user_input})
         
         try:
+            # 2. First call to Groq
             response = self.client.chat.completions.create(
                 model=self.model_id,
                 messages=[{"role": "system", "content": PERSONALITY_PROMPT}] + self.memory,
@@ -143,12 +157,14 @@ class Assistant:
             tool_calls = response_message.tool_calls
 
             if tool_calls:
+                # IMPORTANT: Add Herta's intent to use a tool to memory
                 self.memory.append(response_message)
                 
                 for tool_call in tool_calls:
                     function_name = tool_call.function.name
                     arguments = json.loads(tool_call.function.arguments)
                     
+                    # Tool execution logic
                     if function_name == "type_in_notepad":
                         result = tools.type_in_notepad(arguments.get("text"))
                     elif function_name == "search_youtube":
@@ -166,6 +182,7 @@ class Assistant:
                     else:
                         result = "Unknown tool"
 
+                    # IMPORTANT: Add the tool result to memory so she knows it worked
                     self.memory.append({
                         "role": "tool",
                         "tool_call_id": tool_call.id,
@@ -173,6 +190,7 @@ class Assistant:
                         "content": result
                     })
                 
+                # 3. Second call so she can comment on the successful action
                 second_response = self.client.chat.completions.create(
                     model=self.model_id,
                     messages=[{"role": "system", "content": PERSONALITY_PROMPT}] + self.memory

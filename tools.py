@@ -55,9 +55,17 @@ def open_app(app_name: str):
         return f"I couldn't open it because: {str(e)}"
 
 def take_screenshot():
-    """Takes a screenshot of the current screen."""
-    pyautogui.screenshot("screenshot.png")
-    return "Snapshot taken! I've saved it to our folder."
+    """Takes a screenshot and saves it to the Windows Screenshots folder."""
+    try:
+        save_path = r"C:\Users\naimu\Pictures\Screenshots\herta_snap.png"
+        
+        # Ensure the directory exists (just in case)
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        
+        pyautogui.screenshot(save_path)
+        return f"Snapshot captured, Arnab. I've archived it in your Pictures folder where it belongs."
+    except Exception as e:
+        return f"Logic error while capturing screen: {e}"
 
 def press_key(key: str):
     """Presses a keyboard key (e.g., 'space', 'enter', 'volumeup')."""
