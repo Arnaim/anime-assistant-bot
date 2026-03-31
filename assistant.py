@@ -10,7 +10,7 @@ class Assistant:
         self.voice_engine = VoiceEngine()
         self.name = ASSISTANT_NAME 
         self.client = Groq(api_key=GROQ_API_KEY)
-        self.model_id = "llama-3.8b-8192" 
+        self.model_id = "llama3-8b-8192" 
         
         # Memory setup
         self.memory_file = "chat_history.json"
